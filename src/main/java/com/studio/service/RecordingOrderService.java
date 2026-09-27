@@ -23,8 +23,6 @@ public class RecordingOrderService {
         this.clientRepository = clientRepository;
     }
 
-    // ============ CRUD ============
-
     public RecordingOrder create(RecordingOrder order) {
         validate(order);
         order.setPrice(calculatePrice(order));
@@ -44,7 +42,6 @@ public class RecordingOrderService {
         RecordingOrder old = getById(newOrder.getId());
         validate(newOrder);
 
-        // Бизнес-правило: запрет некорректного перехода статуса
         if (old.getStatus() != newOrder.getStatus()
                 && !old.getStatus().canTransitionTo(newOrder.getStatus())) {
             throw new BusinessException(
@@ -62,16 +59,6 @@ public class RecordingOrderService {
         }
     }
 
-    // ============ БИЗНЕС-ПРАВИЛА ЗАКАЗА ============
-
-    /**
-     * Правило 1: название обязательно, длина 3..200.
-     * Правило 2: описание обязательно.
-     * Правило 3: дата записи не может быть в прошлом.
-     * Правило 4: длительность от 1 до 12 часов.
-     * Правило 5: клиент должен существовать в БД.
-     * Правило 6: статус, приоритет и тип записи обязательны (enum).
-     */
     private void validate(RecordingOrder order) {
         if (order == null) {
             throw new BusinessException("Заказ не может быть null");
@@ -109,10 +96,6 @@ public class RecordingOrderService {
         }
     }
 
-    /**
-     * Правило 7 (расчётное): стоимость = часы × ставка типа записи,
-     * надбавка 20% при HIGH-приоритете.
-     */
     private int calculatePrice(RecordingOrder order) {
         int base = order.getHours() * order.getType().getHourlyRate();
         if (order.getPriority() == Priority.HIGH) {
@@ -120,8 +103,6 @@ public class RecordingOrderService {
         }
         return base;
     }
-
-    // ============ ПОИСК ============
 
     public List<RecordingOrder> searchByTitle(String keyword) {
         if (keyword == null || keyword.isBlank()) {
@@ -142,8 +123,6 @@ public class RecordingOrderService {
                 .filter(o -> o.getDescription().toLowerCase().contains(kw))
                 .toList();
     }
-
-    // ============ ФИЛЬТРАЦИЯ ============
 
     public List<RecordingOrder> filterByStatus(OrderStatus status) {
         if (status == null) throw new BusinessException("Статус не задан");
@@ -173,8 +152,6 @@ public class RecordingOrderService {
                 .toList();
     }
 
-    // ============ СОРТИРОВКА ============
-
     public List<RecordingOrder> sortByRecordingDate(boolean asc) {
         Comparator<RecordingOrder> cmp = Comparator.comparing(RecordingOrder::getRecordingDate);
         if (!asc) cmp = cmp.reversed();
@@ -192,8 +169,6 @@ public class RecordingOrderService {
         if (!asc) cmp = cmp.reversed();
         return getAll().stream().sorted(cmp).toList();
     }
-
-    // ============ СТАТИСТИКА ============
 
     public Map<String, Long> getStatistics() {
         List<RecordingOrder> all = getAll();
