@@ -1,8 +1,5 @@
 package com.studio.model;
 
-/**
- * Тип записи. Ставка за час используется в бизнес-расчёте стоимости.
- */
 public enum RecordingType {
     SINGLE(3000),
     ALBUM(2500),
