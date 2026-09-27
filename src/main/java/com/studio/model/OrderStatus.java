@@ -7,10 +7,6 @@ public enum OrderStatus {
     COMPLETED,
     CANCELLED;
 
-    /**
-     * Бизнес-правило: разрешены только определённые переходы между статусами.
-     * COMPLETED и CANCELLED — финальные состояния.
-     */
     public boolean canTransitionTo(OrderStatus next) {
         if (next == null) return false;
         return switch (this) {
