@@ -50,14 +50,6 @@ public class ClientService {
         return repository.existsById(id);
     }
 
-    // ============ БИЗНЕС-ПРАВИЛА КЛИЕНТА ============
-
-    /**
-     * Правило 1: ФИО обязательно, минимум 2 символа.
-     * Правило 2: email обязателен, валидного формата, уникален.
-     * Правило 3: телефон обязателен, формат +7XXXXXXXXXX.
-     * Правило 4: роль обязательна (enum).
-     */
     private void validate(Client client) {
         if (client == null) {
             throw new BusinessException("Клиент не может быть null");
