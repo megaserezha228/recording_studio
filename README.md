@@ -1,129 +1,168 @@
-# Студия звукозаписи — консольная информационная система
+# Студия звукозаписи
 
-Контрольная работа №1.
-Стек: Java 17, Maven, PostgreSQL, JDBC, Apache POI.
+Консольная информационная система для учёта клиентов студии и заказов на студийную запись.
+
+## Стек технологий
+
+- Java 17
+- Maven
+- PostgreSQL
+- JDBC
+- Apache POI (экспорт в Excel)
 
 ## Архитектура
-Console UI → Service → Repository / JDBC → PostgreSQL
 
+Приложение построено по многослойной схеме:
+
+    Console UI  ->  Service  ->  Repository / JDBC  ->  PostgreSQL
 
 - **UI** — `com.studio.ui.ConsoleUI`, `InputReader`, `ExceptionHandler`
 - **Service** — `com.studio.service.ClientService`, `RecordingOrderService`
-- **Repository** — `com.studio.repository.*` + `impl/*`
-- **DB** — `com.studio.util.DatabaseManager`, `db/schema.sql`
+- **Repository** — `com.studio.repository.*` и `com.studio.repository.impl.*`
+- **Database** — `com.studio.util.DatabaseManager`, `db/schema.sql`
+
+## Структура проекта
+
+    recording-studio/
+    ├── pom.xml
+    ├── README.md
+    ├── build-and-run.bat
+    ├── db/
+    │   └── schema.sql
+    └── src/main/
+        ├── java/com/studio/
+        │   ├── Main.java
+        │   ├── model/          классы-сущности и перечисления
+        │   ├── repository/     интерфейсы и JDBC-реализации
+        │   ├── service/        бизнес-логика
+        │   ├── exception/      собственные исключения
+        │   ├── ui/             консольный интерфейс
+        │   └── util/           DatabaseManager, ExcelExporter
+        └── resources/
+            └── db.properties
+
+## База данных
+
+Две связанные таблицы:
+
+- `clients` — клиенты студии
+- `recording_orders` — заказы на запись
+
+Связь: `recording_orders.client_id -> clients.id` (один-ко-многим).
+
+Ограничения: PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE, CHECK.
+
+## Функционал
+
+- CRUD для клиентов и заказов
+- Поиск заказов по названию и описанию
+- Фильтрация по статусу, типу записи, приоритету, диапазону дат
+- Сортировка по дате записи, стоимости, дате создания
+- Статистика по заказам (7 показателей)
+- Экспорт заказов в Excel (.xlsx)
+- Бизнес-правила: проверка полей, валидность email и телефона, запрет некорректных переходов статусов, автоматический расчёт стоимости
+- Обработка ошибок ввода и ошибок БД
 
 ## Требования
 
-- Java 17+
-- Maven 3.8+
-- PostgreSQL 13+
+- Java 17 или выше
+- Maven 3.8 или выше
+- PostgreSQL 13 или выше
 
-## Настройка БД
+## Настройка базы данных
 
-1. Создайте базу и таблицы:
-psql -U postgres -f db/schema.sql
+1. Создать базу данных:
 
-2. В `src/main/resources/db.properties` укажите свои параметры:
-db.driver=org.postgresql.Driver
-db.url=jdbc:postgresql://localhost:5432/recording_studio
-db.user=postgres
-db.password=postgres
+       psql -U postgres -c "CREATE DATABASE recording_studio;"
 
+2. Применить схему:
 
-## Сборка и запуск
+       psql -U postgres -d recording_studio -f db/schema.sql
 
-```bash
-mvn clean package
-java -jar target/recording-studio-1.0.0.jar
+3. Проверить параметры подключения в `src/main/resources/db.properties`:
 
-```
-## Или через Maven:
+       db.driver=org.postgresql.Driver
+       db.url=jdbc:postgresql://localhost:5432/recording_studio?characterEncoding=UTF-8
+       db.user=postgres
+       db.password=postgres
 
-- mvn exec:java -Dexec.mainClass=com.studio.Main
+## Запуск
 
-## Структура проекта:
+### Способ 1. Через готовый скрипт (Windows, самый простой)
 
-src/main/java/com/studio/
-├── Main.java
-├── model/          # POJO + enum
-├── repository/     # интерфейсы + JDBC-реализации
-├── service/        # бизнес-логика
-├── exception/      # собственные исключения
-├── ui/             # консольное меню
-└── util/           # DatabaseManager, ExcelExporter
+В корне проекта лежит `build-and-run.bat`. Он собирает проект и сразу запускает приложение.
 
-## Функционал:
+**Вариант А. Двойной клик** по файлу `build-and-run.bat` в Проводнике.
 
-- CRUD по клиентам и заказам на запись
+**Вариант Б. Из cmd:**
 
-- Поиск по названию и описанию заказа
+    build-and-run.bat
 
-- Фильтрация по статусу / типу / приоритету / диапазону дат
+**Вариант В. Из PowerShell:**
 
-- Сортировка по дате записи / стоимости / дате создания
+    .\build-and-run.bat
 
-- Статистика по заказам
+**Вариант Г. Из Git Bash:**
 
-- Экспорт заказов в .xlsx
+    ./build-and-run.bat
 
-- Бизнес-правила (валидация в сервисах, переходы статусов)
+### Способ 2. Вручную через Maven
 
-- Обработка ошибок ввода и БД
+1. Собрать проект:
 
+       mvn clean package
 
----
+2. Запустить приложение:
 
-# ✅ Итог по Части 4
+       java -jar target/recording-studio-1.0.0.jar
 
-## 🆕 Создано заново
+### Способ 3. Запуск на Windows с правильной кодировкой
 
-| Файл |
-|---|
-| `src/main/java/com/studio/util/ExcelExporter.java` |
-| `README.md` |
+Русский ввод в классической консоли Windows работает корректно только при кодировке CP866. Перед запуском выполните:
 
-## ✏️ Изменено (был создан в Части 1 как заглушка)
+**cmd:**
 
-| Файл |
-|---|
-| `src/main/java/com/studio/ui/ConsoleUI.java` (полная версия) |
-| `src/main/java/com/studio/Main.java` (полная версия) |
+    chcp 866
+    java -jar target\recording-studio-1.0.0.jar
 
----
+**PowerShell:**
 
-## 🧾 Все команды Части 4 одной пачкой
+    chcp 866
+    java -jar target/recording-studio-1.0.0.jar
 
-### PowerShell
+**Git Bash:**
 
-```powershell
-cd recording-studio
+    chcp 866
+    java -jar target/recording-studio-1.0.0.jar
 
-# Excel-экспортёр
-mkdir src\main\java\com\studio\util
-New-Item src\main\java\com\studio\util\ExcelExporter.java -ItemType File
+Скрипт `build-and-run.bat` делает это автоматически — его можно использовать вместо ручного запуска.
 
-# UI и точка входа (файлы уже были — перезаписываем содержимое)
-New-Item src\main\java\com\studio\ui\ConsoleUI.java -ItemType File -Force
-New-Item src\main\java\com\studio\Main.java          -ItemType File -Force
+### Способ 4. Запуск через Windows Terminal (рекомендуется)
 
-# README
-New-Item README.md -ItemType File
+Windows Terminal корректно работает с кириллицей в UTF-8, никаких `chcp` не требуется:
 
-code .
-```
+    java -jar target/recording-studio-1.0.0.jar
 
-## bash
+### Полный список команд для запуска
 
-cd recording-studio
+| Оболочка | Команда |
+|---|---|
+| Проводник | двойной клик по `build-and-run.bat` |
+| cmd | `build-and-run.bat` |
+| PowerShell | `.\build-and-run.bat` |
+| Git Bash | `./build-and-run.bat` |
+| Ручной запуск (cmd) | `chcp 866` затем `java -jar target\recording-studio-1.0.0.jar` |
+| Ручной запуск (PowerShell) | `chcp 866` затем `java -jar target/recording-studio-1.0.0.jar` |
+| Windows Terminal | `java -jar target/recording-studio-1.0.0.jar` |
 
-mkdir -p src/main/java/com/studio/util
-touch src/main/java/com/studio/util/ExcelExporter.java
+## Главное меню
 
-touch src/main/java/com/studio/ui/ConsoleUI.java
-touch src/main/java/com/studio/Main.java
-touch README.md
-
-code .
-
-
-
+    1. Клиенты
+    2. Заказы на запись
+    3. Поиск
+    4. Фильтрация
+    5. Сортировка
+    6. Статистика
+    7. Экспорт данных
+    8. Вывести таблицы базы данных
+    0. Выход
