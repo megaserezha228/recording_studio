@@ -1,28 +1,10 @@
-cat > .gitignore << 'EOF'
-# Maven
 target/
-*.jar
-*.war
-
-# IDE
 .idea/
 *.iml
 .vscode/
 .classpath
 .project
 .settings/
-
-# OS
 .DS_Store
 Thumbs.db
-
-# Build artifacts
-orders.xlsx
-*.xlsx
-
-# Logs
 *.log
-
-# Temp
-*.tmp
-EOF

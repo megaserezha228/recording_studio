@@ -1,0 +1,33 @@
+# Необязательный вариант: база данных КР №1 в Docker.
+#
+#   docker compose up -d      — запустить PostgreSQL (при первом запуске выполнится db/schema.sql)
+#   docker compose ps         — проверить состояние (STATUS должен быть healthy)
+#   docker compose down       — остановить (данные сохраняются в volume)
+#
+# После запуска в src/main/resources/database.properties укажите порт 5433:
+#   db.url=jdbc:postgresql://localhost:5433/recording_studio?connectTimeout=5
+#
+# Порт 5433 выбран, чтобы не конфликтовать с локальным PostgreSQL (5432)
+# и с PostgreSQL демонстрационной системы из архива (55432).
+
+services:
+  recording-studio-db:
+    image: postgres:16-alpine
+    container_name: recording-studio-db
+    environment:
+      POSTGRES_DB: recording_studio
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1234"
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - recording-studio-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d recording_studio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  recording-studio-data:

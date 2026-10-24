@@ -4,7 +4,7 @@ import com.studio.exception.DatabaseException;
 import com.studio.model.Client;
 import com.studio.model.ClientRole;
 import com.studio.repository.ClientRepository;
-import com.studio.util.DatabaseManager;
+import com.studio.config.DatabaseManager;
 
 import java.sql.*;
 import java.util.ArrayList;

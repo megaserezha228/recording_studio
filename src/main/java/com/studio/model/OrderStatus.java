@@ -1,11 +1,25 @@
 package com.studio.model;
 
+/**
+ * Статус заказа на запись.
+ * name() хранится в БД, title — показывается пользователю.
+ */
 public enum OrderStatus {
-    CREATED,
-    CONFIRMED,
-    IN_PROGRESS,
-    COMPLETED,
-    CANCELLED;
+    CREATED("Создан"),
+    CONFIRMED("Подтверждён"),
+    IN_PROGRESS("В работе"),
+    COMPLETED("Завершён"),
+    CANCELLED("Отменён");
+
+    private final String title;
+
+    OrderStatus(String title) {
+        this.title = title;
+    }
+
+    public String getTitle() {
+        return title;
+    }
 
     /**
      * Бизнес-правило: разрешены только определённые переходы между статусами.
@@ -20,5 +34,15 @@ public enum OrderStatus {
             case COMPLETED   -> false;
             case CANCELLED   -> false;
         };
+    }
+
+    /** Заказ ещё не завершён и не отменён. */
+    public boolean isActive() {
+        return this == CREATED || this == CONFIRMED || this == IN_PROGRESS;
+    }
+
+    @Override
+    public String toString() {
+        return title;
     }
 }

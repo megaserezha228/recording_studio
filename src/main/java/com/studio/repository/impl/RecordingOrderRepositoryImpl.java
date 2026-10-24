@@ -3,7 +3,7 @@ package com.studio.repository.impl;
 import com.studio.exception.DatabaseException;
 import com.studio.model.*;
 import com.studio.repository.RecordingOrderRepository;
-import com.studio.util.DatabaseManager;
+import com.studio.config.DatabaseManager;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -16,10 +16,16 @@ public class RecordingOrderRepositoryImpl implements RecordingOrderRepository {
             "INSERT INTO recording_orders " +
             "(title, description, status, type, priority, client_id, " +
             " recording_date, hours, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    /**
+     * Базовый SELECT: заказ + имя и телефон клиента (JOIN по внешнему ключу client_id).
+     */
+    private static final String BASE_SELECT =
+            "SELECT o.*, c.full_name AS client_name, c.phone AS client_phone " +
+            "FROM recording_orders o JOIN clients c ON c.id = o.client_id ";
     private static final String SELECT_BY_ID =
-            "SELECT * FROM recording_orders WHERE id = ?";
+            BASE_SELECT + "WHERE o.id = ?";
     private static final String SELECT_ALL =
-            "SELECT * FROM recording_orders ORDER BY id";
+            BASE_SELECT + "ORDER BY o.id";
     private static final String UPDATE =
             "UPDATE recording_orders SET title=?, description=?, status=?, type=?, " +
             "priority=?, client_id=?, recording_date=?, hours=?, price=?, " +
@@ -27,13 +33,13 @@ public class RecordingOrderRepositoryImpl implements RecordingOrderRepository {
     private static final String DELETE =
             "DELETE FROM recording_orders WHERE id=?";
     private static final String SELECT_BY_STATUS =
-            "SELECT * FROM recording_orders WHERE status = ?";
+            BASE_SELECT + "WHERE o.status = ? ORDER BY o.id";
     private static final String SELECT_BY_TYPE =
-            "SELECT * FROM recording_orders WHERE type = ?";
+            BASE_SELECT + "WHERE o.type = ? ORDER BY o.id";
     private static final String SELECT_BY_PRIORITY =
-            "SELECT * FROM recording_orders WHERE priority = ?";
+            BASE_SELECT + "WHERE o.priority = ? ORDER BY o.id";
     private static final String SELECT_BY_CLIENT =
-            "SELECT * FROM recording_orders WHERE client_id = ?";
+            BASE_SELECT + "WHERE o.client_id = ? ORDER BY o.id";
 
     @Override
     public RecordingOrder save(RecordingOrder order) {
@@ -69,7 +75,7 @@ public class RecordingOrderRepositoryImpl implements RecordingOrderRepository {
                 return Optional.empty();
             }
         } catch (SQLException e) {
-            throw new DatabaseException("Ошибка поиска заказа", e);
+            throw new DatabaseException("Не удалось загрузить заказ", e);
         }
     }
 
@@ -105,7 +111,7 @@ public class RecordingOrderRepositoryImpl implements RecordingOrderRepository {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            throw new DatabaseException("Ошибка удаления заказа", e);
+            throw new DatabaseException("Не удалось удалить заказ", e);
         }
     }
 
@@ -149,12 +155,12 @@ public class RecordingOrderRepositoryImpl implements RecordingOrderRepository {
             }
             return list;
         } catch (SQLException e) {
-            throw new DatabaseException("Ошибка выборки заказов", e);
+            throw new DatabaseException("Не удалось загрузить список заказов", e);
         }
     }
 
     private RecordingOrder mapRow(ResultSet rs) throws SQLException {
-        return new RecordingOrder(
+        RecordingOrder order = new RecordingOrder(
                 rs.getInt("id"),
                 rs.getString("title"),
                 rs.getString("description"),
@@ -167,5 +173,8 @@ public class RecordingOrderRepositoryImpl implements RecordingOrderRepository {
                 rs.getInt("price"),
                 rs.getTimestamp("created_at").toLocalDateTime(),
                 rs.getTimestamp("updated_at").toLocalDateTime());
+        order.setClientName(rs.getString("client_name"));
+        order.setClientPhone(rs.getString("client_phone"));
+        return order;
     }
 }

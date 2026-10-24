@@ -18,6 +18,12 @@ public class RecordingOrder {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // Данные связанного клиента (заполняются через JOIN в репозитории,
+    // в таблицу recording_orders не сохраняются). Нужны, чтобы в интерфейсе
+    // показывать имя клиента, а не технический client_id.
+    private String clientName;
+    private String clientPhone;
+
     public RecordingOrder() { }
 
     public RecordingOrder(int id, String title, String description,
@@ -88,6 +94,12 @@ public class RecordingOrder {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getClientName() { return clientName; }
+    public void setClientName(String clientName) { this.clientName = clientName; }
+
+    public String getClientPhone() { return clientPhone; }
+    public void setClientPhone(String clientPhone) { this.clientPhone = clientPhone; }
 
     @Override
     public String toString() {

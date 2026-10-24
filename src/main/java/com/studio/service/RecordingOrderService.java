@@ -8,6 +8,7 @@ import com.studio.repository.RecordingOrderRepository;
 
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -191,6 +192,68 @@ public class RecordingOrderService {
         Comparator<RecordingOrder> cmp = Comparator.comparing(RecordingOrder::getCreatedAt);
         if (!asc) cmp = cmp.reversed();
         return getAll().stream().sorted(cmp).toList();
+    }
+
+    // ============ ПОИСК + ФИЛЬТРЫ + СОРТИРОВКА ДЛЯ ГЛАВНОГО ОКНА ============
+
+    /**
+     * Применяет к списку заказов поиск, фильтры и сортировку из {@link OrderQuery}.
+     * <p>
+     * Метод не обращается к БД: список уже загружен ({@link #getAll()}),
+     * поэтому смена фильтра в интерфейсе работает мгновенно,
+     * а кнопка «Обновить» заново читает данные из PostgreSQL.
+     */
+    public List<RecordingOrder> applyQuery(List<RecordingOrder> source, OrderQuery query) {
+        if (source == null) {
+            return List.of();
+        }
+        if (query == null) {
+            query = OrderQuery.all();
+        }
+        String keyword = query.keyword() == null
+                ? ""
+                : query.keyword().trim().toLowerCase(Locale.ROOT);
+        OrderStatus status = query.status();
+        RecordingType type = query.type();
+        Priority priority = query.priority();
+
+        return source.stream()
+                .filter(o -> keyword.isEmpty() || matchesKeyword(o, keyword))
+                .filter(o -> status == null || o.getStatus() == status)
+                .filter(o -> type == null || o.getType() == type)
+                .filter(o -> priority == null || o.getPriority() == priority)
+                .sorted(comparatorFor(query.sortField(), query.ascending()))
+                .toList();
+    }
+
+    /** Поиск по нескольким смысловым полям: название, описание, имя клиента. */
+    private boolean matchesKeyword(RecordingOrder order, String keyword) {
+        return containsIgnoreCase(order.getTitle(), keyword)
+                || containsIgnoreCase(order.getDescription(), keyword)
+                || containsIgnoreCase(order.getClientName(), keyword);
+    }
+
+    private static boolean containsIgnoreCase(String text, String lowerKeyword) {
+        return text != null && text.toLowerCase(Locale.ROOT).contains(lowerKeyword);
+    }
+
+    private Comparator<RecordingOrder> comparatorFor(OrderSortField field, boolean ascending) {
+        OrderSortField sortField = field == null ? OrderSortField.RECORDING_DATE : field;
+        Comparator<RecordingOrder> cmp = switch (sortField) {
+            case RECORDING_DATE -> Comparator.comparing(RecordingOrder::getRecordingDate,
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+            case PRICE -> Comparator.comparingInt(RecordingOrder::getPrice);
+            case TITLE -> Comparator.comparing(RecordingOrder::getTitle, String.CASE_INSENSITIVE_ORDER);
+            case CLIENT -> Comparator.comparing(
+                    o -> o.getClientName() == null ? "" : o.getClientName(), String.CASE_INSENSITIVE_ORDER);
+            case CREATED_AT -> Comparator.comparing(RecordingOrder::getCreatedAt,
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+        };
+        if (!ascending) {
+            cmp = cmp.reversed();
+        }
+        // При равных значениях порядок стабилен — по номеру заказа.
+        return cmp.thenComparingInt(RecordingOrder::getId);
     }
 
     // ============ СТАТИСТИКА ============

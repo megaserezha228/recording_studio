@@ -1,168 +1,204 @@
-# Студия звукозаписи
+# Студия звукозаписи — JavaFX-клиент (КР №2)
 
-Консольная информационная система для учёта клиентов студии и заказов на студийную запись.
+Настольное JavaFX-приложение для учёта заказов на студийную запись.
+Продолжение КР №1: та же предметная область, те же сущности и бизнес-правила,
+та же база данных PostgreSQL `recording_studio`. Подключение к БД — напрямую через **JDBC**.
 
-## Стек технологий
+![Главное окно](docs/main-window.png)
 
-- Java 17
-- Maven
-- PostgreSQL
-- JDBC
-- Apache POI (экспорт в Excel)
+**Стек:** Java 21, JavaFX 21 (FXML + CSS), Maven, PostgreSQL, JDBC, slf4j, JUnit 5 + AssertJ.
 
-## Архитектура
+---
 
-Приложение построено по многослойной схеме:
+## Статус по частям КР №2
 
-    Console UI  ->  Service  ->  Repository / JDBC  ->  PostgreSQL
+| Часть | Статус |
+|---|---|
+| Часть 1. Главное окно | ✅ сделано |
+| Часть 2. Табличное представление | ✅ почти всё уже есть в главном окне (см. ниже) |
+| Часть 3. Добавление / редактирование / удаление | 🟡 удаление с подтверждением готово; формы добавления и редактирования — дальше |
+| Часть 4. Связанные сущности | 🟡 таблица и карточка показывают клиента вместо `client_id`; выбор клиента в форме — дальше |
+| Валидация, диалоги | 🟡 диалоги ошибок/подтверждения готовы; проверка полей формы — вместе с Частью 3 |
+| Поиск, фильтрация, сортировка | ✅ сделано в главном окне |
+| Статистика | ⬜ кнопка есть, окно — дальше |
+| Экспорт | ⬜ кнопка есть, экспорт через FileChooser — дальше |
 
-- **UI** — `com.studio.ui.ConsoleUI`, `InputReader`, `ExceptionHandler`
-- **Service** — `com.studio.service.ClientService`, `RecordingOrderService`
-- **Repository** — `com.studio.repository.*` и `com.studio.repository.impl.*`
-- **Database** — `com.studio.util.DatabaseManager`, `db/schema.sql`
+### Что сделано в Части 1
 
-## Структура проекта
+Главное окно (`main-view.fxml` + `MainController`), из которого доступны все функции системы:
 
-    recording-studio/
-    ├── pom.xml
-    ├── README.md
-    ├── build-and-run.bat
-    ├── db/
-    │   └── schema.sql
-    └── src/main/
-        ├── java/com/studio/
-        │   ├── Main.java
-        │   ├── model/          классы-сущности и перечисления
-        │   ├── repository/     интерфейсы и JDBC-реализации
-        │   ├── service/        бизнес-логика
-        │   ├── exception/      собственные исключения
-        │   ├── ui/             консольный интерфейс
-        │   └── util/           DatabaseManager, ExcelExporter
-        └── resources/
-            └── db.properties
+- **просмотр списка заказов** — `TableView` с понятными колонками (№, название, клиент, тип, дата, часы, стоимость, приоритет, статус); статус показан цветной плашкой, высокий приоритет выделен;
+- **карточка заказа** справа — все сведения о выбранном заказе (описание, клиент и телефон, ставка, стоимость, даты создания/изменения);
+- **добавление / редактирование** — кнопки «Добавить», «Изменить» (и двойной щелчок по строке); сами формы будут в Части 3, сейчас кнопки сообщают об этом;
+- **удаление с подтверждением** — работает полностью: диалог с данными заказа, кнопка «Отмена» по умолчанию, после удаления таблица перезагружается;
+- **поиск** — по названию, описанию и имени клиента, срабатывает при вводе;
+- **фильтрация** — по статусу, типу записи и приоритету (фильтры комбинируются с поиском);
+- **сортировка** — по дате записи, стоимости, названию, клиенту, дате создания; по возрастанию / убыванию;
+- **обновление данных** — кнопка «Обновить» заново читает данные из PostgreSQL, выбранная строка сохраняется;
+- **переход к статистике** и **экспорт** — кнопки на панели (реализация — в своих разделах);
+- **строка состояния** — «Показано: N из M», последнее действие, время обновления;
+- **индикатор подключения** к БД в заголовке; если база недоступна — понятное сообщение (без stack trace), а кнопка «Обновить» повторяет попытку.
 
-## База данных
+Кнопки «Изменить» и «Удалить» неактивны, пока в таблице не выбрана строка.
 
-Две связанные таблицы:
-
-- `clients` — клиенты студии
-- `recording_orders` — заказы на запись
-
-Связь: `recording_orders.client_id -> clients.id` (один-ко-многим).
-
-Ограничения: PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE, CHECK.
-
-## Функционал
-
-- CRUD для клиентов и заказов
-- Поиск заказов по названию и описанию
-- Фильтрация по статусу, типу записи, приоритету, диапазону дат
-- Сортировка по дате записи, стоимости, дате создания
-- Статистика по заказам (7 показателей)
-- Экспорт заказов в Excel (.xlsx)
-- Бизнес-правила: проверка полей, валидность email и телефона, запрет некорректных переходов статусов, автоматический расчёт стоимости
-- Обработка ошибок ввода и ошибок БД
-
-## Требования
-
-- Java 17 или выше
-- Maven 3.8 или выше
-- PostgreSQL 13 или выше
-
-## Настройка базы данных
-
-1. Создать базу данных:
-
-       psql -U postgres -c "CREATE DATABASE recording_studio;"
-
-2. Применить схему:
-
-       psql -U postgres -d recording_studio -f db/schema.sql
-
-3. Проверить параметры подключения в `src/main/resources/db.properties`:
-
-       db.driver=org.postgresql.Driver
-       db.url=jdbc:postgresql://localhost:5432/recording_studio?characterEncoding=UTF-8
-       db.user=postgres
-       db.password=postgres
+---
 
 ## Запуск
 
-### Способ 1. Через готовый скрипт (Windows, самый простой)
+### 1. Что нужно
 
-В корне проекта лежит `build-and-run.bat`. Он собирает проект и сразу запускает приложение.
+- **Java 21**
+- **Maven 3.9+** (или IntelliJ IDEA — Maven встроен)
+- **PostgreSQL** с базой из КР №1 (локально или в Docker)
 
-**Вариант А. Двойной клик** по файлу `build-and-run.bat` в Проводнике.
+### 2. База данных
 
-**Вариант Б. Из cmd:**
+**Вариант А — локальный PostgreSQL из КР №1 (по умолчанию).**
+Если база `recording_studio` уже создана в КР №1, ничего делать не нужно.
+Иначе:
 
-    build-and-run.bat
+```
+psql -U postgres -c "CREATE DATABASE recording_studio;"
+psql -U postgres -d recording_studio -f db/schema.sql
+```
 
-**Вариант В. Из PowerShell:**
+Параметры подключения — в `src/main/resources/database.properties`
+(по умолчанию `localhost:5432`, пользователь `postgres`, пароль `1234`, как в КР №1).
 
-    .\build-and-run.bat
+**Вариант Б — база КР №1 в Docker.**
 
-**Вариант Г. Из Git Bash:**
+```
+docker compose up -d
+```
 
-    ./build-and-run.bat
+Поднимется PostgreSQL на порту **5433**, при первом запуске выполнится `db/schema.sql`
+(таблицы + тестовые данные). В `database.properties` раскомментируйте строку с портом 5433.
 
-### Способ 2. Вручную через Maven
+### 3. Приложение
 
-1. Собрать проект:
-
-       mvn clean package
-
-2. Запустить приложение:
-
-       java -jar target/recording-studio-1.0.0.jar
-
-### Способ 3. Запуск на Windows с правильной кодировкой
-
-Русский ввод в классической консоли Windows работает корректно только при кодировке CP866. Перед запуском выполните:
-
-**cmd:**
-
-    chcp 866
-    java -jar target\recording-studio-1.0.0.jar
-
-**PowerShell:**
-
-    chcp 866
-    java -jar target/recording-studio-1.0.0.jar
-
-**Git Bash:**
-
-    chcp 866
-    java -jar target/recording-studio-1.0.0.jar
-
-Скрипт `build-and-run.bat` делает это автоматически — его можно использовать вместо ручного запуска.
-
-### Способ 4. Запуск через Windows Terminal (рекомендуется)
-
-Windows Terminal корректно работает с кириллицей в UTF-8, никаких `chcp` не требуется:
-
-    java -jar target/recording-studio-1.0.0.jar
-
-### Полный список команд для запуска
-
-| Оболочка | Команда |
+| Способ | Команда |
 |---|---|
-| Проводник | двойной клик по `build-and-run.bat` |
-| cmd | `build-and-run.bat` |
-| PowerShell | `.\build-and-run.bat` |
-| Git Bash | `./build-and-run.bat` |
-| Ручной запуск (cmd) | `chcp 866` затем `java -jar target\recording-studio-1.0.0.jar` |
-| Ручной запуск (PowerShell) | `chcp 866` затем `java -jar target/recording-studio-1.0.0.jar` |
-| Windows Terminal | `java -jar target/recording-studio-1.0.0.jar` |
+| Maven | `mvn javafx:run` |
+| Windows, двойной щелчок | `run.bat` |
+| Linux / macOS | `./run.sh` |
+| IntelliJ IDEA | открыть папку проекта как Maven-проект → запустить `com.studio.app.Launcher` |
 
-## Главное меню
+> В IntelliJ запускайте именно `Launcher`, а не `StudioApplication`: проект не модульный,
+> и прямой запуск наследника `Application` может выдать «JavaFX runtime components are missing».
 
-    1. Клиенты
-    2. Заказы на запись
-    3. Поиск
-    4. Фильтрация
-    5. Сортировка
-    6. Статистика
-    7. Экспорт данных
-    8. Вывести таблицы базы данных
-    0. Выход
+Тесты (без БД): `mvn test`.
+
+### Демонстрационная система из архива (Docker)
+
+По методичке её нужно один раз развернуть отдельно (из корня архива с `backend`, `javafx-client`, `android-client`):
+
+```
+docker compose --env-file .env -f backend/docker-compose.yml up -d --wait
+```
+
+Проверка: `http://localhost:8080/` и `http://localhost:8080/actuator/health`, затем `cd javafx-client` → `mvn javafx:run`.
+Наше приложение с ней не связано: оно работает с базой КР №1 через JDBC.
+
+---
+
+## Структура проекта
+
+```
+recording-studio-javafx/
+├── pom.xml                      Maven: JavaFX 21, PostgreSQL JDBC, slf4j, JUnit (из методички)
+├── docker-compose.yml           необязательно: база КР №1 в Docker (порт 5433)
+├── db/schema.sql                создание таблиц + тестовые данные (из КР №1)
+├── run.bat / run.sh             запуск через Maven
+└── src/
+    ├── main/java/com/studio/
+    │   ├── app/                 StudioApplication (Stage, Scene, загрузка FXML), Launcher
+    │   ├── controller/          MainController — обработчики главного окна
+    │   ├── service/             бизнес-логика: RecordingOrderService, ClientService,
+    │   │                        OrderQuery (параметры поиска/фильтров/сортировки), OrderSortField
+    │   ├── repository/          интерфейсы DAO
+    │   │   └── impl/            JDBC-реализации (весь SQL — только здесь)
+    │   ├── model/               сущности RecordingOrder, Client и перечисления
+    │   ├── config/              DatabaseManager — JDBC-подключение по database.properties
+    │   ├── exception/           BusinessException, DatabaseException, EntityNotFoundException
+    │   └── ui/                  Dialogs (ошибка/подтверждение), ChoiceItem, Formatters
+    ├── main/resources/
+    │   ├── database.properties  параметры подключения к БД (пароль не в коде)
+    │   ├── simplelogger.properties
+    │   └── com/studio/
+    │       ├── view/main-view.fxml   разметка главного окна
+    │       └── css/styles.css        оформление
+    └── test/java/…              тесты поиска, фильтрации и сортировки
+```
+
+### Слои
+
+```
+main-view.fxml (View) → MainController → RecordingOrderService → RecordingOrderRepository (JDBC) → PostgreSQL
+```
+
+- **FXML** — только разметка: какие элементы, где расположены, `fx:id` и `onAction`.
+- **Controller** — реагирует на действия пользователя, собирает параметры, показывает результат. SQL здесь нет.
+- **Service** — бизнес-правила (валидация, переходы статусов, расчёт стоимости), поиск/фильтры/сортировка.
+- **Repository (DAO)** — SQL через `PreparedStatement`, соединение закрывается через try-with-resources.
+- **Database** — ограничения `PRIMARY KEY`, `FOREIGN KEY`, `NOT NULL`, `UNIQUE`, `CHECK`.
+
+### Что изменено по сравнению с КР №1
+
+- Консольный интерфейс (`ConsoleUI`, `InputReader`, `ExceptionHandler`, `Main`) удалён — его заменил JavaFX.
+- `DatabaseManager` переехал в `config` и читает `database.properties`; ошибки подключения не роняют приложение.
+- Перечисления получили русские названия для интерфейса (`toString()`), в БД по-прежнему хранится `name()`.
+- `RecordingOrder` получил поля `clientName` и `clientPhone`; репозиторий заказов читает их через `JOIN clients`.
+- В `RecordingOrderService` добавлен `applyQuery(...)` — поиск + фильтры + сортировка для главного окна.
+- `ExcelExporter` (Apache POI) пока убран: POI нет в `pom.xml` из методички. Экспорт — отдельным разделом.
+
+---
+
+## Как продолжать
+
+**Часть 2 — таблица.** Основное уже есть: колонки с заголовками, выбор строки, обновление после изменений,
+`ObservableList`, технические поля (`client_id`, `created_at`) не показываются. При желании — вкладка
+«Клиенты» со своей таблицей.
+
+**Часть 3 — добавление и редактирование.**
+1. `resources/com/studio/view/order-form.fxml` + `controller/OrderFormController`: `TextField` (название),
+   `TextArea` (описание), `DatePicker` (дата), `Spinner` 1–12 (часы), `ComboBox` типа, приоритета, статуса
+   (статус — только при редактировании), `ComboBox<Client>` клиента.
+2. Открывать как модальное окно (`stage.initModality(Modality.WINDOW_MODAL)`); при редактировании заполнять поля из выбранного заказа.
+3. «Сохранить» → `orderService.create(...)` / `orderService.update(...)`; `BusinessException` → `Dialogs.showError(...)`.
+4. В `MainController` заменить заглушки в `onAdd()` / `onEdit()` и после сохранения вызвать `reloadFromDatabase()`.
+5. ⚠️ Правило КР №1 «дата записи не может быть в прошлом» не даст сохранить старые заказы из тестовых данных
+   (у них даты января–марта 2026). Проверять дату стоит только у новых заказов или если дату изменили.
+
+**Часть 4 — связанные сущности.** Передать `ClientService` в контроллеры через фабрику контроллеров в
+`StudioApplication`; список клиентов для `ComboBox<Client>` — `clientService.getAll()`
+(у `Client.toString()` вернуть ФИО). По желанию — «заказы клиента» через `findByClientId`.
+
+**Валидация.** Сервис уже проверяет правила КР №1. В форме добавить проверку до сохранения:
+пустые поля, длина названия 3–200, число часов, дата, выбран ли клиент — с сообщением, какое поле исправить.
+
+**Статистика.** `statistics-view.fxml` + `StatisticsController`; данные — `orderService.getStatistics()`
+(там 7 показателей; заменить `Map.of` на `LinkedHashMap`, чтобы сохранить порядок). Можно добавить `PieChart` по `countByStatus()`.
+
+**Экспорт.** `FileChooser` с фильтром `*.csv` → класс `util/CsvExporter` пишет текущий список
+(в контроллере это `visibleOrders`) в UTF-8 с BOM и разделителем `;` — так файл корректно открывается в Excel.
+Для `.xlsx` — добавить зависимость `poi-ooxml` и вернуть `ExcelExporter` из КР №1, передавая путь из `FileChooser`.
+
+---
+
+## Подсказки к защите (Часть 1)
+
+- **Stage / Scene / Node.** `Stage` — окно; `Scene` — его содержимое; `Node` — любой элемент
+  (кнопка, таблица, панель). В `StudioApplication.start()` создаётся `Scene` из FXML и ставится в `Stage`.
+- **FXML ↔ Controller.** `fx:controller` указывает класс; поле с `@FXML` и именем, равным `fx:id`,
+  получает созданный элемент; `onAction="#onDelete"` вызывает метод контроллера. `initialize()` вызывается
+  после заполнения всех `@FXML`-полей. Контроллер создаётся через `setControllerFactory`, чтобы передать сервис.
+- **ObservableList.** `visibleOrders` подключён к таблице через `setItems`; `setAll(...)` меняет список,
+  и таблица перерисовывается сама.
+- **Поиск / фильтры / сортировка.** Контроллер собирает `OrderQuery` из полей и вызывает
+  `orderService.applyQuery(loadedOrders, query)`: поиск по названию/описанию/клиенту, фильтры по статусу,
+  типу и приоритету, сортировка `Comparator` по выбранному полю. БД при этом не опрашивается —
+  её перечитывает кнопка «Обновить». Сортировка заголовками колонок отключена (`sortable="false"`),
+  чтобы был один понятный механизм.
+- **Исключения.** DAO оборачивает `SQLException` в `DatabaseException`; контроллер ловит ошибки и показывает
+  `Dialogs.showError(...)` с понятным текстом, подробности пишутся в журнал (slf4j).
+- **Где пароль БД.** В `database.properties`, не в Java-коде.
