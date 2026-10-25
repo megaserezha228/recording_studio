@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 /**
  * Проверка поиска, фильтрации и сортировки без базы данных:
@@ -79,6 +80,17 @@ class RecordingOrderServiceQueryTest {
         assertThat(service.applyQuery(null, OrderQuery.all())).isEmpty();
     }
 
+    @Test
+    void countsOrdersPerClient() {
+        List<RecordingOrder> withRepeatClient = List.of(orders.get(0), orders.get(1), orders.get(2),
+                order(5, "Ещё сингл", "Вокал", "Иван Морозов",
+                        OrderStatus.CREATED, RecordingType.SINGLE, Priority.LOW, "2026-03-01", 3000, 1));
+
+        assertThat(service.countOrdersByClient(withRepeatClient))
+                .containsOnly(entry(1, 2L), entry(2, 1L), entry(3, 1L));
+        assertThat(service.countOrdersByClient(null)).isEmpty();
+    }
+
     private List<Integer> ids(OrderQuery query) {
         return service.applyQuery(orders, query).stream().map(RecordingOrder::getId).toList();
     }
@@ -90,8 +102,14 @@ class RecordingOrderServiceQueryTest {
     private static RecordingOrder order(int id, String title, String description, String client,
                                         OrderStatus status, RecordingType type, Priority priority,
                                         String date, int price) {
+        return order(id, title, description, client, status, type, priority, date, price, id);
+    }
+
+    private static RecordingOrder order(int id, String title, String description, String client,
+                                        OrderStatus status, RecordingType type, Priority priority,
+                                        String date, int price, int clientId) {
         RecordingOrder order = new RecordingOrder(id, title, description, status, type, priority,
-                id, LocalDate.parse(date), 2, price, LocalDateTime.now(), LocalDateTime.now());
+                clientId, LocalDate.parse(date), 2, price, LocalDateTime.now(), LocalDateTime.now());
         order.setClientName(client);
         return order;
     }

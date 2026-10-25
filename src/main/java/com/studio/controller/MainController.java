@@ -1,10 +1,13 @@
 package com.studio.controller;
 
 import com.studio.config.DatabaseManager;
+import com.studio.model.Client;
+import com.studio.model.ClientRole;
 import com.studio.model.OrderStatus;
 import com.studio.model.Priority;
 import com.studio.model.RecordingOrder;
 import com.studio.model.RecordingType;
+import com.studio.service.ClientService;
 import com.studio.service.OrderQuery;
 import com.studio.service.OrderSortField;
 import com.studio.service.RecordingOrderService;
@@ -33,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Контроллер главного окна (main-view.fxml).
@@ -46,6 +50,7 @@ public class MainController {
     private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
     private final RecordingOrderService orderService;
+    private final ClientService clientService;
 
     /**
      * Все заказы, загруженные из БД при последнем обновлении.
@@ -58,6 +63,12 @@ public class MainController {
      * о каждом изменении, и таблица перерисовывается автоматически.
      */
     private final ObservableList<RecordingOrder> visibleOrders = FXCollections.observableArrayList();
+
+    /** Клиенты для таблицы на вкладке «Клиенты» (тоже ObservableList — таблица обновляется сама). */
+    private final ObservableList<Client> clients = FXCollections.observableArrayList();
+
+    /** Количество заказов у каждого клиента: id клиента → число заказов. */
+    private Map<Integer, Long> ordersPerClient = Map.of();
 
     // ===== Элементы интерфейса из FXML (связаны по fx:id) =====
     @FXML private Label connectionLabel;
@@ -83,6 +94,15 @@ public class MainController {
     @FXML private TableColumn<RecordingOrder, Priority> priorityColumn;
     @FXML private TableColumn<RecordingOrder, OrderStatus> statusColumn;
 
+    @FXML private TableView<Client> clientsTable;
+    @FXML private TableColumn<Client, Integer> clientIdColumn;
+    @FXML private TableColumn<Client, String> clientNameColumn;
+    @FXML private TableColumn<Client, ClientRole> clientRoleColumn;
+    @FXML private TableColumn<Client, String> clientEmailColumn;
+    @FXML private TableColumn<Client, String> clientPhoneColumn;
+    @FXML private TableColumn<Client, Long> clientOrdersColumn;
+    @FXML private Label clientsCountLabel;
+
     @FXML private Label detailsPlaceholder;
     @FXML private VBox detailsContent;
     @FXML private Label detailsTitle;
@@ -105,8 +125,9 @@ public class MainController {
     /** Пока элементы фильтра сбрасываются программно, не пересчитываем список на каждое изменение. */
     private boolean updatingFilters;
 
-    public MainController(RecordingOrderService orderService) {
+    public MainController(RecordingOrderService orderService, ClientService clientService) {
         this.orderService = orderService;
+        this.clientService = clientService;
     }
 
     /**
@@ -116,6 +137,7 @@ public class MainController {
     @FXML
     private void initialize() {
         setupTable();
+        setupClientsTable();
         setupFilters();
 
         // Кнопки «Изменить» и «Удалить» доступны, только когда выбрана строка.
@@ -228,6 +250,26 @@ public class MainController {
         return "status-" + status.name().toLowerCase().replace('_', '-');
     }
 
+    /**
+     * Таблица клиентов на вкладке «Клиенты». Здесь включена встроенная сортировка
+     * TableView: щелчок по заголовку колонки сортирует строки (повторный — в обратном порядке).
+     */
+    private void setupClientsTable() {
+        clientsTable.setItems(clients);
+        clientsTable.setPlaceholder(new Label("Загрузка данных…"));
+
+        clientIdColumn.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getId()));
+        clientNameColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getFullName()));
+        clientRoleColumn.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getRole()));
+        clientEmailColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getEmail()));
+        clientPhoneColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getPhone()));
+        clientOrdersColumn.setCellValueFactory(c ->
+                new ReadOnlyObjectWrapper<>(ordersPerClient.getOrDefault(c.getValue().getId(), 0L)));
+
+        clientIdColumn.getStyleClass().add("column-center");
+        clientOrdersColumn.getStyleClass().add("column-center");
+    }
+
     // =====================================================================
     // ПОИСК, ФИЛЬТРЫ, СОРТИРОВКА
     // =====================================================================
@@ -309,6 +351,15 @@ public class MainController {
                         () -> ordersTable.getSelectionModel().clearSelection());
     }
 
+    /** Выделяет заказ и прокручивает таблицу к нему, если он виден при текущих фильтрах. */
+    private void selectOrder(Integer orderId) {
+        restoreSelection(orderId);
+        int index = ordersTable.getSelectionModel().getSelectedIndex();
+        if (index >= 0) {
+            ordersTable.scrollTo(index);
+        }
+    }
+
     @FXML
     private void onFilterChanged() {
         applyFilters();
@@ -333,28 +384,56 @@ public class MainController {
     }
 
     /**
-     * Читает все заказы из PostgreSQL (через сервис и репозиторий)
-     * и заново применяет текущие фильтры.
+     * Перечитывает данные из БД; выбранный в таблице заказ остаётся выбранным.
      *
      * @return true — данные загружены успешно
      */
     private boolean reloadFromDatabase() {
+        RecordingOrder selected = ordersTable.getSelectionModel().getSelectedItem();
+        return reloadFromDatabase(selected == null ? null : selected.getId());
+    }
+
+    /**
+     * Читает все заказы и клиентов из PostgreSQL (через сервисы и репозитории)
+     * и заново применяет текущие фильтры. Вызывается после каждого добавления,
+     * изменения и удаления, поэтому таблицы всегда показывают актуальное состояние БД.
+     *
+     * @param selectOrderId заказ, который нужно выделить и показать после загрузки
+     *                      (например, только что добавленный или изменённый); null — без выделения
+     * @return true — данные загружены успешно
+     */
+    private boolean reloadFromDatabase(Integer selectOrderId) {
         try {
             loadedOrders = orderService.getAll();
+            List<Client> loadedClients = clientService.getAll();
             setConnected(true);
             lastUpdatedLabel.setText("Обновлено в " + Formatters.time(LocalDateTime.now()));
             ordersTable.setPlaceholder(new Label("В базе пока нет заказов."));
-            log.info("Загружено заказов: {}", loadedOrders.size());
+            log.info("Загружено заказов: {}, клиентов: {}", loadedOrders.size(), loadedClients.size());
+
+            // Счётчики заказов задаются до setAll, чтобы новые строки сразу показали верные значения.
+            ordersPerClient = orderService.countOrdersByClient(loadedOrders);
+            clients.setAll(loadedClients);
+            clientsTable.sort();   // сохранить сортировку, выбранную щелчком по заголовку
+            clientsTable.setPlaceholder(new Label("В базе пока нет клиентов."));
+            updateClientsCount();
+
             applyFilters();
+            selectOrder(selectOrderId);
             return true;
         } catch (RuntimeException e) {
-            log.error("Не удалось загрузить заказы", e);
+            log.error("Не удалось загрузить данные", e);
             loadedOrders = List.of();
             visibleOrders.clear();
+            ordersPerClient = Map.of();
+            clients.clear();
             setConnected(false);
             ordersTable.setPlaceholder(new Label(
                     "Нет данных: не удалось подключиться к базе. Проверьте подключение и нажмите «Обновить»."));
+            clientsTable.setPlaceholder(new Label(
+                    "Нет данных: не удалось подключиться к базе. Проверьте подключение и нажмите «Обновить»."));
             updateCount();
+            updateClientsCount();
             setMessage("Ошибка загрузки данных");
             Dialogs.showError(window(), "Не удалось загрузить заказы", e);
             return false;
@@ -472,6 +551,10 @@ public class MainController {
 
     private void updateCount() {
         countLabel.setText("Показано: " + visibleOrders.size() + " из " + loadedOrders.size());
+    }
+
+    private void updateClientsCount() {
+        clientsCountLabel.setText("Всего: " + clients.size());
     }
 
     private void setMessage(String text) {

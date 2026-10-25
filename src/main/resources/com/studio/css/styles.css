@@ -78,6 +78,53 @@
     -fx-text-fill: #ff9b93;
 }
 
+/* ===================== Вкладки «Заказы» / «Клиенты» ===================== */
+
+.main-tabs > .tab-header-area {
+    -fx-padding: 6 16 0 16;
+}
+
+.main-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: -color-surface;
+    -fx-border-color: transparent transparent -color-border transparent;
+}
+
+.main-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 6 16 6 16;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 3 0;
+    -fx-cursor: hand;
+}
+
+.main-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -color-muted;
+    -fx-font-weight: bold;
+}
+
+.main-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-border-color: transparent transparent -color-primary transparent;
+}
+
+.main-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: -color-primary;
+}
+
+.main-tabs > .tab-header-area > .headers-region > .tab:selected .focus-indicator {
+    -fx-border-color: transparent;
+}
+
+.main-tabs > .tab-content-area {
+    -fx-background-color: -color-bg;
+}
+
+.tab-title {
+    -fx-text-fill: -color-text;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
 /* ===================== Панель действий ===================== */
 
 .action-bar {

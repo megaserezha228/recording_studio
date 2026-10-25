@@ -256,6 +256,20 @@ public class RecordingOrderService {
         return cmp.thenComparingInt(RecordingOrder::getId);
     }
 
+    // ============ ДАННЫЕ ДЛЯ ТАБЛИЦЫ КЛИЕНТОВ ============
+
+    /**
+     * Количество заказов у каждого клиента: id клиента → число заказов.
+     * Как и {@link #applyQuery}, работает с уже загруженным списком без запроса к БД.
+     */
+    public Map<Integer, Long> countOrdersByClient(List<RecordingOrder> source) {
+        if (source == null) {
+            return Map.of();
+        }
+        return source.stream()
+                .collect(Collectors.groupingBy(RecordingOrder::getClientId, Collectors.counting()));
+    }
+
     // ============ СТАТИСТИКА ============
 
     public Map<String, Long> getStatistics() {

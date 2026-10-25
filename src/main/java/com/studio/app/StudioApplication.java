@@ -5,6 +5,7 @@ import com.studio.repository.ClientRepository;
 import com.studio.repository.RecordingOrderRepository;
 import com.studio.repository.impl.ClientRepositoryImpl;
 import com.studio.repository.impl.RecordingOrderRepositoryImpl;
+import com.studio.service.ClientService;
 import com.studio.service.RecordingOrderService;
 import com.studio.ui.Dialogs;
 import javafx.application.Application;
@@ -48,6 +49,7 @@ public class StudioApplication extends Application {
         ClientRepository clientRepository = new ClientRepositoryImpl();
         RecordingOrderRepository orderRepository = new RecordingOrderRepositoryImpl();
         RecordingOrderService orderService = new RecordingOrderService(orderRepository, clientRepository);
+        ClientService clientService = new ClientService(clientRepository);
 
         // ===== Загрузка интерфейса из FXML =====
         FXMLLoader loader = new FXMLLoader(resource(MAIN_VIEW));
@@ -55,7 +57,7 @@ public class StudioApplication extends Application {
         // Фабрика контроллеров позволяет передать в него сервис через конструктор.
         loader.setControllerFactory(type -> {
             if (type == MainController.class) {
-                return new MainController(orderService);
+                return new MainController(orderService, clientService);
             }
             throw new IllegalArgumentException("Неизвестный контроллер: " + type.getName());
         });
