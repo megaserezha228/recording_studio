@@ -7,6 +7,7 @@ import com.studio.repository.ClientRepository;
 import com.studio.repository.RecordingOrderRepository;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.List;
@@ -28,6 +29,7 @@ public class RecordingOrderService {
 
     public RecordingOrder create(RecordingOrder order) {
         validate(order);
+        requireNotInPast(order.getRecordingDate());
         order.setPrice(calculatePrice(order));
         return repository.save(order);
     }
@@ -44,6 +46,11 @@ public class RecordingOrderService {
     public void update(RecordingOrder newOrder) {
         RecordingOrder old = getById(newOrder.getId());
         validate(newOrder);
+        // Дату проверяем, только если её изменили: иначе нельзя было бы
+        // отредактировать уже прошедший заказ (например, отметить его завершённым).
+        if (!newOrder.getRecordingDate().equals(old.getRecordingDate())) {
+            requireNotInPast(newOrder.getRecordingDate());
+        }
 
         // Бизнес-правило: запрет некорректного перехода статуса
         if (old.getStatus() != newOrder.getStatus()
@@ -68,7 +75,8 @@ public class RecordingOrderService {
     /**
      * Правило 1: название обязательно, длина 3..200.
      * Правило 2: описание обязательно.
-     * Правило 3: дата записи не может быть в прошлом.
+     * Правило 3: дата записи не может быть в прошлом
+     *            (проверяется при создании и при изменении даты — {@link #requireNotInPast}).
      * Правило 4: длительность от 1 до 12 часов.
      * Правило 5: клиент должен существовать в БД.
      * Правило 6: статус, приоритет и тип записи обязательны (enum).
@@ -89,9 +97,6 @@ public class RecordingOrderService {
         if (order.getRecordingDate() == null) {
             throw new BusinessException("Дата записи обязательна");
         }
-        if (order.getRecordingDate().isBefore(LocalDate.now())) {
-            throw new BusinessException("Дата записи не может быть в прошлом");
-        }
         if (order.getHours() < 1 || order.getHours() > 12) {
             throw new BusinessException("Длительность записи должна быть от 1 до 12 часов");
         }
@@ -110,16 +115,40 @@ public class RecordingOrderService {
         }
     }
 
+    private static void requireNotInPast(LocalDate recordingDate) {
+        if (recordingDate.isBefore(LocalDate.now())) {
+            throw new BusinessException("Дата записи не может быть в прошлом");
+        }
+    }
+
     /**
      * Правило 7 (расчётное): стоимость = часы × ставка типа записи,
      * надбавка 20% при HIGH-приоритете.
      */
     private int calculatePrice(RecordingOrder order) {
-        int base = order.getHours() * order.getType().getHourlyRate();
-        if (order.getPriority() == Priority.HIGH) {
+        return calculatePrice(order.getType(), order.getPriority(), order.getHours());
+    }
+
+    /**
+     * Та же формула для предварительного расчёта в форме заказа:
+     * пользователь видит стоимость до сохранения.
+     */
+    public int calculatePrice(RecordingType type, Priority priority, int hours) {
+        int base = hours * type.getHourlyRate();
+        if (priority == Priority.HIGH) {
             base = (int) Math.round(base * 1.2);
         }
         return base;
+    }
+
+    /**
+     * Статусы, которые можно выбрать при редактировании заказа:
+     * текущий + разрешённые переходы из него ({@link OrderStatus#canTransitionTo}).
+     */
+    public List<OrderStatus> allowedStatuses(OrderStatus current) {
+        return Arrays.stream(OrderStatus.values())
+                .filter(s -> s == current || current.canTransitionTo(s))
+                .toList();
     }
 
     // ============ ПОИСК ============

@@ -14,6 +14,7 @@ import com.studio.service.RecordingOrderService;
 import com.studio.ui.ChoiceItem;
 import com.studio.ui.Dialogs;
 import com.studio.ui.Formatters;
+import com.studio.ui.OrderFormWindow;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Контроллер главного окна (main-view.fxml).
@@ -446,10 +448,12 @@ public class MainController {
 
     @FXML
     private void onAdd() {
-        // TODO Часть 3: открыть диалог добавления заказа (order-form.fxml),
-        //  после сохранения вызвать reloadFromDatabase() и выделить новую запись.
-        showNotImplemented("Добавление заказа",
-                "Форма добавления заказа будет сделана в Части 3 «Добавление, редактирование и удаление».");
+        openOrderForm(null).ifPresent(saved -> {
+            // Новый заказ может не подходить под текущие фильтры — сбрасываем их, чтобы он был виден.
+            resetFilterControls();
+            reloadFromDatabase(saved.getId());
+            setMessage("Заказ «" + saved.getTitle() + "» добавлен");
+        });
     }
 
     @FXML
@@ -460,11 +464,31 @@ public class MainController {
                     "Выберите заказ в таблице, который нужно изменить.");
             return;
         }
-        // TODO Часть 3: открыть диалог редактирования с текущими значениями selected,
-        //  после сохранения вызвать reloadFromDatabase().
-        showNotImplemented("Изменение заказа",
-                "Форма редактирования заказа «" + selected.getTitle()
-                        + "» будет сделана в Части 3 «Добавление, редактирование и удаление».");
+        openOrderForm(selected).ifPresent(saved -> {
+            reloadFromDatabase(saved.getId());
+            setMessage("Заказ «" + saved.getTitle() + "» изменён");
+        });
+    }
+
+    /**
+     * Открывает модальную форму заказа и ждёт её закрытия.
+     *
+     * @param order заказ для редактирования или null для добавления
+     * @return сохранённый заказ; пусто — форму закрыли без сохранения или её не удалось открыть
+     */
+    private Optional<RecordingOrder> openOrderForm(RecordingOrder order) {
+        try {
+            Optional<RecordingOrder> saved = OrderFormWindow.show(window(), orderService, clientService, order);
+            if (saved.isEmpty()) {
+                setMessage(order == null ? "Добавление отменено" : "Изменение отменено");
+            }
+            return saved;
+        } catch (RuntimeException e) {
+            // Например, не удалось прочитать список клиентов из БД.
+            log.error("Не удалось открыть форму заказа", e);
+            Dialogs.showError(window(), "Не удалось открыть форму заказа", e);
+            return Optional.empty();
+        }
     }
 
     @FXML

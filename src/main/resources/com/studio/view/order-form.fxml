@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Форма добавления и редактирования заказа (модальное окно).
+
+    Одна и та же разметка используется в двух режимах:
+    - добавление — поля пустые, статус «Создан» и не меняется;
+    - редактирование — поля заполнены значениями выбранного заказа,
+      в списке статусов только разрешённые переходы.
+    Режим задаёт OrderFormController.init(...).
+-->
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.studio.controller.OrderFormController"
+      styleClass="form-pane" spacing="16">
+
+    <!-- Заголовок формы: «Новый заказ» или «Изменение заказа №…» -->
+    <VBox spacing="2">
+        <Label fx:id="formTitle" styleClass="form-title"/>
+        <Label fx:id="formSubtitle" styleClass="form-hint" wrapText="true"/>
+    </VBox>
+
+    <GridPane styleClass="form-grid" hgap="14" vgap="10">
+        <columnConstraints>
+            <ColumnConstraints minWidth="120" prefWidth="120"/>
+            <ColumnConstraints hgrow="ALWAYS" minWidth="300"/>
+        </columnConstraints>
+
+        <Label text="Название *" styleClass="form-label" GridPane.rowIndex="0"/>
+        <TextField fx:id="titleField" promptText="От 3 до 200 символов"
+                   GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <Label text="Описание *" styleClass="form-label" GridPane.rowIndex="1" GridPane.valignment="TOP"/>
+        <TextArea fx:id="descriptionArea" promptText="Что нужно записать" wrapText="true" prefRowCount="3"
+                  GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="Клиент *" styleClass="form-label" GridPane.rowIndex="2"/>
+        <ComboBox fx:id="clientBox" promptText="Выберите клиента" maxWidth="Infinity"
+                  GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+        <Label text="Тип записи" styleClass="form-label" GridPane.rowIndex="3"/>
+        <ComboBox fx:id="typeBox" maxWidth="Infinity"
+                  GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+        <Label text="Приоритет" styleClass="form-label" GridPane.rowIndex="4"/>
+        <ComboBox fx:id="priorityBox" maxWidth="Infinity"
+                  GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+        <Label text="Дата записи *" styleClass="form-label" GridPane.rowIndex="5"/>
+        <DatePicker fx:id="datePicker" promptText="дд.мм.гггг" maxWidth="Infinity"
+                    GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+
+        <Label text="Длительность, ч" styleClass="form-label" GridPane.rowIndex="6"/>
+        <Spinner fx:id="hoursSpinner" prefWidth="110"
+                 GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+
+        <Label text="Статус" styleClass="form-label" GridPane.rowIndex="7"/>
+        <VBox spacing="3" GridPane.rowIndex="7" GridPane.columnIndex="1">
+            <ComboBox fx:id="statusBox" maxWidth="Infinity"/>
+            <Label fx:id="statusHint" styleClass="form-hint" wrapText="true"/>
+        </VBox>
+
+        <Label text="Стоимость" styleClass="form-label" GridPane.rowIndex="8"/>
+        <VBox spacing="3" GridPane.rowIndex="8" GridPane.columnIndex="1">
+            <Label fx:id="pricePreview" styleClass="form-price"/>
+            <Label text="Рассчитывается автоматически: часы × ставка типа, +20% за высокий приоритет."
+                   styleClass="form-hint" wrapText="true"/>
+        </VBox>
+    </GridPane>
+
+    <!-- Кнопки: Esc — «Отмена», Enter — «Сохранить» -->
+    <HBox spacing="8" alignment="CENTER_RIGHT" styleClass="form-buttons">
+        <Label text="* — обязательные поля" styleClass="form-hint"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Отмена" cancelButton="true" onAction="#onCancel"/>
+        <Button fx:id="saveButton" text="Сохранить" defaultButton="true" onAction="#onSave"
+                styleClass="button-primary"/>
+    </HBox>
+
+    <padding>
+        <Insets top="20" right="22" bottom="18" left="22"/>
+    </padding>
+</VBox>

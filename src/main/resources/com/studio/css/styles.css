@@ -412,6 +412,66 @@
     -fx-text-fill: -color-muted;
 }
 
+/* ===================== Форма заказа ===================== */
+
+.form-pane {
+    -fx-background-color: -color-surface;
+}
+
+.form-title {
+    -fx-text-fill: -color-text;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+}
+
+.form-label {
+    -fx-text-fill: #3d4252;
+    -fx-font-weight: bold;
+    -fx-padding: 6 0 0 0;
+}
+
+.form-hint {
+    -fx-text-fill: -color-muted;
+    -fx-font-size: 11px;
+}
+
+.form-price {
+    -fx-text-fill: -color-text;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.form-buttons {
+    -fx-padding: 12 0 0 0;
+    -fx-border-color: #e6e8ee transparent transparent transparent;
+}
+
+.text-area {
+    -fx-background-color: -color-surface;
+    -fx-border-color: #cfd3de;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.text-area .content {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 6;
+}
+
+.text-area:focused, .date-picker:focused, .spinner:focused {
+    -fx-border-color: -color-primary;
+}
+
+.date-picker, .spinner {
+    -fx-border-color: #cfd3de;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.combo-box:disabled {
+    -fx-opacity: 0.7;
+}
+
 /* ===================== Диалоги ===================== */
 
 .dialog-pane {
