@@ -2,7 +2,6 @@ package com.studio.controller;
 
 import com.studio.config.DatabaseManager;
 import com.studio.model.Client;
-import com.studio.model.ClientRole;
 import com.studio.model.OrderStatus;
 import com.studio.model.Priority;
 import com.studio.model.RecordingOrder;
@@ -15,6 +14,7 @@ import com.studio.ui.ChoiceItem;
 import com.studio.ui.Dialogs;
 import com.studio.ui.Formatters;
 import com.studio.ui.OrderFormWindow;
+import com.studio.ui.StatusBadgeCell;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -23,13 +23,14 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseButton;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 import org.slf4j.Logger;
@@ -37,7 +38,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -66,12 +66,6 @@ public class MainController {
      */
     private final ObservableList<RecordingOrder> visibleOrders = FXCollections.observableArrayList();
 
-    /** Клиенты для таблицы на вкладке «Клиенты» (тоже ObservableList — таблица обновляется сама). */
-    private final ObservableList<Client> clients = FXCollections.observableArrayList();
-
-    /** Количество заказов у каждого клиента: id клиента → число заказов. */
-    private Map<Integer, Long> ordersPerClient = Map.of();
-
     // ===== Элементы интерфейса из FXML (связаны по fx:id) =====
     @FXML private Label connectionLabel;
 
@@ -96,14 +90,15 @@ public class MainController {
     @FXML private TableColumn<RecordingOrder, Priority> priorityColumn;
     @FXML private TableColumn<RecordingOrder, OrderStatus> statusColumn;
 
-    @FXML private TableView<Client> clientsTable;
-    @FXML private TableColumn<Client, Integer> clientIdColumn;
-    @FXML private TableColumn<Client, String> clientNameColumn;
-    @FXML private TableColumn<Client, ClientRole> clientRoleColumn;
-    @FXML private TableColumn<Client, String> clientEmailColumn;
-    @FXML private TableColumn<Client, String> clientPhoneColumn;
-    @FXML private TableColumn<Client, Long> clientOrdersColumn;
-    @FXML private Label clientsCountLabel;
+    @FXML private TabPane mainTabs;
+    @FXML private Tab ordersTab;
+    @FXML private Tab clientsTab;
+
+    /**
+     * Контроллер вкладки «Клиенты» (clients-tab.fxml, подключена через fx:include fx:id="clientsView").
+     * FXMLLoader внедряет его по имени поля: fx:id + "Controller".
+     */
+    @FXML private ClientsTabController clientsViewController;
 
     @FXML private Label detailsPlaceholder;
     @FXML private VBox detailsContent;
@@ -139,8 +134,10 @@ public class MainController {
     @FXML
     private void initialize() {
         setupTable();
-        setupClientsTable();
         setupFilters();
+
+        // Вкладка «Клиенты» просит главное окно обновить данные или показать заказ.
+        clientsViewController.setActions(this::onRefresh, this::showOrder);
 
         // Кнопки «Изменить» и «Удалить» доступны, только когда выбрана строка.
         var noSelection = ordersTable.getSelectionModel().selectedItemProperty().isNull();
@@ -189,7 +186,7 @@ public class MainController {
         idColumn.getStyleClass().add("column-center");
         hoursColumn.getStyleClass().add("column-center");
         priceColumn.getStyleClass().add("column-right");
-        statusColumn.setCellFactory(column -> new StatusCell());
+        statusColumn.setCellFactory(column -> new StatusBadgeCell<>());
         priorityColumn.setCellFactory(column -> new PriorityCell());
 
         // Двойной щелчок по строке — редактирование заказа.
@@ -203,30 +200,6 @@ public class MainController {
             });
             return row;
         });
-    }
-
-    /** Ячейка статуса в виде цветной «плашки». */
-    private static final class StatusCell extends TableCell<RecordingOrder, OrderStatus> {
-        private final Label badge = new Label();
-
-        StatusCell() {
-            // Плашка не сжимается с многоточием, а занимает ширину по тексту.
-            badge.setMinWidth(Region.USE_PREF_SIZE);
-        }
-
-        @Override
-        protected void updateItem(OrderStatus status, boolean empty) {
-            super.updateItem(status, empty);
-            if (empty || status == null) {
-                setGraphic(null);
-                setText(null);
-                return;
-            }
-            badge.setText(status.getTitle());
-            badge.getStyleClass().setAll("label", "status-badge", statusStyle(status));
-            setGraphic(badge);
-            setText(null);
-        }
     }
 
     /** Ячейка приоритета: высокий выделяется цветом. */
@@ -246,30 +219,6 @@ public class MainController {
                 getStyleClass().add("priority-low");
             }
         }
-    }
-
-    private static String statusStyle(OrderStatus status) {
-        return "status-" + status.name().toLowerCase().replace('_', '-');
-    }
-
-    /**
-     * Таблица клиентов на вкладке «Клиенты». Здесь включена встроенная сортировка
-     * TableView: щелчок по заголовку колонки сортирует строки (повторный — в обратном порядке).
-     */
-    private void setupClientsTable() {
-        clientsTable.setItems(clients);
-        clientsTable.setPlaceholder(new Label("Загрузка данных…"));
-
-        clientIdColumn.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getId()));
-        clientNameColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getFullName()));
-        clientRoleColumn.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getRole()));
-        clientEmailColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getEmail()));
-        clientPhoneColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getPhone()));
-        clientOrdersColumn.setCellValueFactory(c ->
-                new ReadOnlyObjectWrapper<>(ordersPerClient.getOrDefault(c.getValue().getId(), 0L)));
-
-        clientIdColumn.getStyleClass().add("column-center");
-        clientOrdersColumn.getStyleClass().add("column-center");
     }
 
     // =====================================================================
@@ -413,12 +362,7 @@ public class MainController {
             ordersTable.setPlaceholder(new Label("В базе пока нет заказов."));
             log.info("Загружено заказов: {}, клиентов: {}", loadedOrders.size(), loadedClients.size());
 
-            // Счётчики заказов задаются до setAll, чтобы новые строки сразу показали верные значения.
-            ordersPerClient = orderService.countOrdersByClient(loadedOrders);
-            clients.setAll(loadedClients);
-            clientsTable.sort();   // сохранить сортировку, выбранную щелчком по заголовку
-            clientsTable.setPlaceholder(new Label("В базе пока нет клиентов."));
-            updateClientsCount();
+            clientsViewController.setData(loadedClients, loadedOrders);
 
             applyFilters();
             selectOrder(selectOrderId);
@@ -427,15 +371,11 @@ public class MainController {
             log.error("Не удалось загрузить данные", e);
             loadedOrders = List.of();
             visibleOrders.clear();
-            ordersPerClient = Map.of();
-            clients.clear();
             setConnected(false);
             ordersTable.setPlaceholder(new Label(
                     "Нет данных: не удалось подключиться к базе. Проверьте подключение и нажмите «Обновить»."));
-            clientsTable.setPlaceholder(new Label(
-                    "Нет данных: не удалось подключиться к базе. Проверьте подключение и нажмите «Обновить»."));
+            clientsViewController.showLoadError();
             updateCount();
-            updateClientsCount();
             setMessage("Ошибка загрузки данных");
             Dialogs.showError(window(), "Не удалось загрузить заказы", e);
             return false;
@@ -540,6 +480,37 @@ public class MainController {
                         + " заказов) будет сделан в разделе «Экспорт данных».");
     }
 
+    // =====================================================================
+    // СВЯЗАННЫЕ ДАННЫЕ: ПЕРЕХОДЫ ЗАКАЗ ↔ КЛИЕНТ
+    // =====================================================================
+
+    /** Кнопка в карточке заказа: открыть клиента этого заказа на вкладке «Клиенты». */
+    @FXML
+    private void onShowClient() {
+        RecordingOrder selected = ordersTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            return;
+        }
+        mainTabs.getSelectionModel().select(clientsTab);
+        clientsViewController.selectClient(selected.getClientId());
+        setMessage("Клиент заказа «" + selected.getTitle() + "»: " + Formatters.orDash(selected.getClientName()));
+    }
+
+    /**
+     * Показать заказ на вкладке «Заказы» (вызывается из карточки клиента).
+     * Фильтры сбрасываются, чтобы заказ точно был в таблице.
+     */
+    private void showOrder(int orderId) {
+        mainTabs.getSelectionModel().select(ordersTab);
+        resetFilterControls();
+        applyFilters();
+        selectOrder(orderId);
+        RecordingOrder selected = ordersTable.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            setMessage("Открыт заказ «" + selected.getTitle() + "»");
+        }
+    }
+
     private void showNotImplemented(String title, String message) {
         Dialogs.showInfo(window(), title, "Раздел в разработке", message);
     }
@@ -559,7 +530,7 @@ public class MainController {
         }
         detailsTitle.setText("№" + order.getId() + " · " + order.getTitle());
         detailsStatus.setText(order.getStatus().getTitle());
-        detailsStatus.getStyleClass().setAll("label", "status-badge", statusStyle(order.getStatus()));
+        detailsStatus.getStyleClass().setAll("label", "status-badge", StatusBadgeCell.styleClass(order.getStatus()));
         detailsDescription.setText(Formatters.orDash(order.getDescription()));
         detailsClient.setText(Formatters.orDash(order.getClientName()));
         detailsPhone.setText(Formatters.orDash(order.getClientPhone()));
@@ -577,9 +548,6 @@ public class MainController {
         countLabel.setText("Показано: " + visibleOrders.size() + " из " + loadedOrders.size());
     }
 
-    private void updateClientsCount() {
-        clientsCountLabel.setText("Всего: " + clients.size());
-    }
 
     private void setMessage(String text) {
         messageLabel.setText(text);

@@ -1,5 +1,6 @@
 package com.studio.app;
 
+import com.studio.controller.ClientsTabController;
 import com.studio.controller.MainController;
 import com.studio.repository.ClientRepository;
 import com.studio.repository.RecordingOrderRepository;
@@ -55,9 +56,13 @@ public class StudioApplication extends Application {
         FXMLLoader loader = new FXMLLoader(resource(MAIN_VIEW));
         // FXMLLoader сам создаёт контроллер, указанный в fx:controller.
         // Фабрика контроллеров позволяет передать в него сервис через конструктор.
+        // Она же используется для вложенных FXML (fx:include) — вкладки «Клиенты».
         loader.setControllerFactory(type -> {
             if (type == MainController.class) {
                 return new MainController(orderService, clientService);
+            }
+            if (type == ClientsTabController.class) {
+                return new ClientsTabController(orderService);
             }
             throw new IllegalArgumentException("Неизвестный контроллер: " + type.getName());
         });

@@ -299,6 +299,38 @@ public class RecordingOrderService {
                 .collect(Collectors.groupingBy(RecordingOrder::getClientId, Collectors.counting()));
     }
 
+    // ============ СВЯЗАННЫЕ ДАННЫЕ: ЗАКАЗЫ КЛИЕНТА ============
+
+    /**
+     * Заказы одного клиента (связь recording_orders.client_id → clients.id),
+     * сначала самые поздние по дате записи. Работает с уже загруженным списком.
+     */
+    public List<RecordingOrder> ordersOfClient(List<RecordingOrder> source, int clientId) {
+        if (source == null) {
+            return List.of();
+        }
+        return source.stream()
+                .filter(o -> o.getClientId() == clientId)
+                .sorted(Comparator.comparing(RecordingOrder::getRecordingDate,
+                                Comparator.nullsLast(Comparator.naturalOrder()))
+                        .reversed()
+                        .thenComparingInt(RecordingOrder::getId))
+                .toList();
+    }
+
+    /** Итоги по заказам клиента: всего, активных и общая стоимость без отменённых. */
+    public ClientOrdersSummary summarize(List<RecordingOrder> clientOrders) {
+        if (clientOrders == null) {
+            return new ClientOrdersSummary(0, 0, 0);
+        }
+        long active = clientOrders.stream().filter(o -> o.getStatus().isActive()).count();
+        long totalPrice = clientOrders.stream()
+                .filter(o -> o.getStatus() != OrderStatus.CANCELLED)
+                .mapToLong(RecordingOrder::getPrice)
+                .sum();
+        return new ClientOrdersSummary(clientOrders.size(), active, totalPrice);
+    }
+
     // ============ СТАТИСТИКА ============
 
     public Map<String, Long> getStatistics() {

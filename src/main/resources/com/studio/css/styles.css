@@ -412,6 +412,26 @@
     -fx-text-fill: -color-muted;
 }
 
+/* ===================== Карточка клиента ===================== */
+
+.role-badge {
+    -fx-padding: 3 10 3 10;
+    -fx-background-radius: 10;
+    -fx-background-color: #ecedfb;
+    -fx-text-fill: -color-primary;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+/* Компактная таблица заказов клиента внутри карточки */
+.client-orders-table .table-row-cell {
+    -fx-cell-size: 32px;
+}
+
+.client-orders-table .table-cell {
+    -fx-padding: 0 6 0 6;
+}
+
 /* ===================== Форма заказа ===================== */
 
 .form-pane {

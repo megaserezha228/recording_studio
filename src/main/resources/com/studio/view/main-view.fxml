@@ -54,10 +54,10 @@
 
     <!-- ================= ЦЕНТР: вкладки «Заказы» и «Клиенты» ================= -->
     <center>
-        <TabPane tabClosingPolicy="UNAVAILABLE" styleClass="main-tabs">
+        <TabPane fx:id="mainTabs" tabClosingPolicy="UNAVAILABLE" styleClass="main-tabs">
 
             <!-- ===== Вкладка «Заказы»: действия, поиск/фильтры, таблица и карточка ===== -->
-            <Tab text="Заказы">
+            <Tab fx:id="ordersTab" text="Заказы">
                 <BorderPane>
                     <top>
                         <VBox>
@@ -183,6 +183,10 @@
                                             <Label fx:id="detailsPrice" styleClass="details-value, details-price"
                                                    GridPane.rowIndex="6" GridPane.columnIndex="1"/>
                                         </GridPane>
+                                        <!-- Переход по связи заказ → клиент -->
+                                        <Button text="Карточка клиента и его заказы →" onAction="#onShowClient" styleClass="button-link">
+                                            <tooltip><Tooltip text="Открыть клиента на вкладке «Клиенты»"/></tooltip>
+                                        </Button>
                                         <Separator/>
                                         <GridPane hgap="12" vgap="6">
                                             <columnConstraints>
@@ -208,39 +212,11 @@
                 </BorderPane>
             </Tab>
 
-            <!-- ===== Вкладка «Клиенты»: таблица клиентов студии ===== -->
-            <Tab text="Клиенты">
-                <BorderPane>
-                    <top>
-                        <HBox styleClass="action-bar" alignment="CENTER_LEFT" spacing="8">
-                            <Label text="Клиенты студии" styleClass="tab-title"/>
-                            <Label fx:id="clientsCountLabel" styleClass="status-muted"/>
-                            <Region HBox.hgrow="ALWAYS"/>
-                            <Button text="Обновить" onAction="#onRefresh">
-                                <tooltip><Tooltip text="Заново загрузить данные из базы"/></tooltip>
-                            </Button>
-                        </HBox>
-                    </top>
-                    <center>
-                        <!-- Технические поля (дата создания записи в БД) не показываются -->
-                        <TableView fx:id="clientsTable" styleClass="clients-table">
-                            <columns>
-                                <TableColumn fx:id="clientIdColumn" text="№" prefWidth="55"/>
-                                <TableColumn fx:id="clientNameColumn" text="ФИО / название" prefWidth="220"/>
-                                <TableColumn fx:id="clientRoleColumn" text="Роль" prefWidth="160"/>
-                                <TableColumn fx:id="clientEmailColumn" text="Email" prefWidth="200"/>
-                                <TableColumn fx:id="clientPhoneColumn" text="Телефон" prefWidth="140"/>
-                                <TableColumn fx:id="clientOrdersColumn" text="Заказов" prefWidth="90"/>
-                            </columns>
-                            <columnResizePolicy>
-                                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/>
-                            </columnResizePolicy>
-                            <BorderPane.margin>
-                                <Insets top="14" right="16" bottom="12" left="16"/>
-                            </BorderPane.margin>
-                        </TableView>
-                    </center>
-                </BorderPane>
+            <!-- ===== Вкладка «Клиенты»: клиенты, карточка клиента и его заказы ===== -->
+            <!-- Разметка вкладки — в clients-tab.fxml, контроллер — ClientsTabController.
+                 FXMLLoader внедрит его в поле MainController.clientsViewController (fx:id + "Controller"). -->
+            <Tab fx:id="clientsTab" text="Клиенты">
+                <fx:include fx:id="clientsView" source="clients-tab.fxml"/>
             </Tab>
         </TabPane>
     </center>
